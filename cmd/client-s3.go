@@ -408,6 +408,7 @@ func (c *s3Client) Select(expression, sseKey string) (io.ReadCloser, *probe.Erro
 			contentType = content.ContentType
 		}
 	}
+	
 	opts := minio.SelectObjectOptions{
 		Expression:     expression,
 		ExpressionType: minio.QueryExpressionTypeSQL,

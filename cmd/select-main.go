@@ -30,7 +30,7 @@ import (
 var (
 	selectFlags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "expression",
+			Name:  "query, e",
 			Usage: "Select query expression.",
 		},
 		cli.BoolFlag{
@@ -62,14 +62,14 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Run a query on a set of objects recursively on s3 account.
-      $ {{.HelpName}} --recursive --expression "select * from S3Object" s3/personalbucket/my-large-csvs/
+      $ {{.HelpName}} --recursive --query "select * from S3Object" s3/personalbucket/my-large-csvs/
 
    2. Run a query on an object on minio account.
-      $ {{.HelpName}} --expression "select count(s.power) from S3Object" myminio/iot-devices/power-ratio.csv
+      $ {{.HelpName}} --query "select count(s.power) from S3Object" myminio/iot-devices/power-ratio.csv
 
    3. Run a query on an encrypted object with client provided keys.
       $ {{.HelpName}} --encrypt-key "myminio/iot-devices=32byteslongsecretkeymustbegiven1" \
-            --expression "select count(s.power) from S3Object" myminio/iot-devices/power-ratio-encrypted.csv
+            --query "select count(s.power) from S3Object" myminio/iot-devices/power-ratio-encrypted.csv
 `,
 }
 
@@ -115,7 +115,7 @@ func mainSelect(ctx *cli.Context) error {
 	URLs := ctx.Args()
 	for _, url := range URLs {
 		if !isAliasURLDir(url, encKeyDB) {
-			errorIf(selectQl(url, ctx.String("expression"), encKeyDB).Trace(url), "Unable to run select")
+			errorIf(selectQl(url, ctx.String("query"), encKeyDB).Trace(url), "Unable to run select")
 			continue
 		}
 		targetAlias, targetURL, _ := mustExpandAlias(url)
