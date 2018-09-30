@@ -18,13 +18,13 @@ package cmd
 
 import (
 	"io"
-	"mime"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/probe"
+	"github.com/minio/minio/pkg/mimedb"
 )
 
 var (
@@ -130,7 +130,12 @@ func mainSelect(ctx *cli.Context) error {
 				errorIf(content.Err.Trace(url), "Unable to list on target `"+url+"`.")
 				continue
 			}
-			contentType := mime.TypeByExtension(filepath.Ext(content.URL.Path))
+			var contentType string
+			if objectExt := filepath.Ext(content.URL.Path); objectExt != "" {
+				if content, ok := mimedb.DB[strings.ToLower(strings.TrimPrefix(objectExt, "."))]; ok {
+					contentType = content.ContentType
+				}
+			}
 			for _, cTypeSuffix := range supportedContentTypes {
 				if strings.Contains(contentType, cTypeSuffix) {
 					errorIf(selectQl(targetAlias+content.URL.Path, ctx.String("expression"),

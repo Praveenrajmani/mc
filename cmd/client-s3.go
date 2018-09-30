@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"hash/fnv"
 	"io"
-	"mime"
 	"net"
 	"net/http"
 	"net/url"
@@ -42,6 +41,7 @@ import (
 	"github.com/minio/minio-go/pkg/encrypt"
 	"github.com/minio/minio-go/pkg/policy"
 	"github.com/minio/minio-go/pkg/s3utils"
+	"github.com/minio/minio/pkg/mimedb"
 )
 
 // S3 client
@@ -396,8 +396,18 @@ var supportedContentTypes = []string{
 
 func (c *s3Client) Select(expression, sseKey string) (io.ReadCloser, *probe.Error) {
 	bucket, object := c.url2BucketAndObject()
-	origContentType := mime.TypeByExtension(filepath.Ext(strings.TrimSuffix(strings.TrimSuffix(object, ".gz"), ".bz2")))
-	contentType := mime.TypeByExtension(filepath.Ext(object))
+
+	var origContentType, contentType string
+	if origObjectExt := filepath.Ext(strings.TrimSuffix(strings.TrimSuffix(object, ".gz"), ".bz2")); origObjectExt != "" {
+		if content, ok := mimedb.DB[strings.ToLower(strings.TrimPrefix(origObjectExt, "."))]; ok {
+			origContentType = content.ContentType
+		}
+	}
+	if objectExt := filepath.Ext(object); objectExt != "" {
+		if content, ok := mimedb.DB[strings.ToLower(strings.TrimPrefix(objectExt, "."))]; ok {
+			contentType = content.ContentType
+		}
+	}
 	opts := minio.SelectObjectOptions{
 		Expression:     expression,
 		ExpressionType: minio.QueryExpressionTypeSQL,
