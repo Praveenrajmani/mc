@@ -66,7 +66,7 @@ var treeFlags = []cli.Flag{
 	cli.IntFlag{
 		Name:  "depth, d",
 		Usage: "sets the depth threshold",
-		Value: 1000,
+		Value: -1,
 	},
 }
 
@@ -101,6 +101,9 @@ EXAMPLES:
    
    5. Set the depth of the tree for listing.
       $ {{.HelpName}} -d 2 myS3/mybucket/
+
+   6. List all the directories irrespective to the depth. -1 is the default value for depth.
+      $ {{.HelpName}} -d -1 myS3/mybucket/
 `,
 }
 
@@ -108,8 +111,9 @@ EXAMPLES:
 func checkTreeSyntax(ctx *cli.Context) {
 	args := ctx.Args()
 
-	if ctx.Int("depth") <= 0 {
-		fatalIf(errInvalidArgument().Trace(args...), "depth should have a value greater than 0")
+	depth := ctx.Int("depth")
+	if depth != -1 && depth <= 0 {
+		fatalIf(errInvalidArgument().Trace(args...), "depth should have a value greater than 0 or equal to -1")
 	}
 
 	if (args.Present()) && len(args) == 0 {
@@ -144,7 +148,7 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 	var prev *clientContent
 	show := func(end bool) error {
 		var branchString string
-		if level == 0 && !bucketNameShowed {
+		if level == 1 && !bucketNameShowed {
 			bucketNameShowed = true
 			printMsg(treeMessage{
 				Entry:        url,
@@ -153,8 +157,8 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 			})
 		}
 
-		if level != 0 {
-			for i := 0; i < level; i++ {
+		if level != 1 {
+			for i := 1; i < level; i++ {
 				if dirClosed[i] {
 					branchString += " " + treeLevel
 				} else {
@@ -200,7 +204,7 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 				url = contentURL
 			}
 
-			if depth == 999 || level <= depth {
+			if depth == -1 || level <= depth {
 				if err := doTree(url, level+1, end, dirClosed, depth, includeFiles); err != nil {
 					return err
 				}
@@ -260,7 +264,7 @@ func mainTree(ctx *cli.Context) error {
 	for _, targetURL := range args {
 		if !globalJSON {
 			dirMap := make(map[int]bool)
-			if e := doTree(targetURL, 0, false, dirMap, ctx.Int("depth")-1, includeFiles); e != nil {
+			if e := doTree(targetURL, 1, false, dirMap, ctx.Int("depth"), includeFiles); e != nil {
 				cErr = e
 			}
 		} else {
