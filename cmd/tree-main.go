@@ -130,7 +130,7 @@ func checkTreeSyntax(ctx *cli.Context) {
 }
 
 // doTree - list all entities inside a folder in a tree format.
-func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int, includeFiles bool) error {
+func doTree(url string, level int, leaf bool, depth int, includeFiles bool, useSpace bool) error {
 
 	targetAlias, targetURL, _ := mustExpandAlias(url)
 	if !strings.HasSuffix(targetURL, "/") {
@@ -148,7 +148,7 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 	var prev *clientContent
 	show := func(end bool) error {
 		var branchString string
-		if level == 1 && !bucketNameShowed {
+		if level == 0 && !bucketNameShowed {
 			bucketNameShowed = true
 			printMsg(treeMessage{
 				Entry:        url,
@@ -157,21 +157,19 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 			})
 		}
 
-		if level != 1 {
-			for i := 1; i < level; i++ {
-				if dirClosed[i] {
-					branchString += " " + treeLevel
-				} else {
-					branchString += treeNext + treeLevel
-				}
+		if level != 0 {
+			branchString = treeNext
+			if useSpace {
+				branchString = " "
 			}
+
+			branchString += strings.Repeat(treeLevel, level)
+			branchString += strings.Repeat(" ", level-1)
 		}
 
 		if end {
-			dirClosed[level] = true
 			branchString += treeLastEntry
 		} else {
-			dirClosed[level] = false
 			branchString += treeEntry
 		}
 
@@ -205,7 +203,7 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 			}
 
 			if depth == -1 || level <= depth {
-				if err := doTree(url, level+1, end, dirClosed, depth, includeFiles); err != nil {
+				if err := doTree(url, level+1, end, depth, includeFiles, useSpace); err != nil {
 					return err
 				}
 			}
@@ -235,6 +233,9 @@ func doTree(url string, level int, leaf bool, dirClosed map[int]bool, depth int,
 	}
 
 	if prev != nil {
+		if level == 0 {
+			useSpace = true
+		}
 		if err := show(true); err != nil {
 			return err
 		}
@@ -263,8 +264,7 @@ func mainTree(ctx *cli.Context) error {
 	var cErr error
 	for _, targetURL := range args {
 		if !globalJSON {
-			dirMap := make(map[int]bool)
-			if e := doTree(targetURL, 1, false, dirMap, ctx.Int("depth"), includeFiles); e != nil {
+			if e := doTree(targetURL, 0, false, ctx.Int("depth")-1, includeFiles, false); e != nil {
 				cErr = e
 			}
 		} else {
